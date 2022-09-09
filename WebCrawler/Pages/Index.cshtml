@@ -1,0 +1,119 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center border d-grid p-3">
+    <div class="container">
+      <label for="formFile" class="form-label">Enter URL or select file with urls</label>
+      <form method="post" action="api/crawle" enctype="multipart/form-data">
+          <input class="form-control" type="text" placeholder="Default input" id="formUrl" name="url" aria-label="url">
+          <input class="form-control" name="myfile" type="file" id="formFile">
+          <br />
+          <button class="btn btn-primary d3d">Crawle</button>
+      </form>
+      <script>
+        $("form").submit(function (event) {
+            event.preventDefault();
+            var formData = new FormData(document.forms[0]); 
+
+            $.ajax({
+                type: "POST",
+                url: "api/crawle",
+                data: formData,
+                async: false,
+                cache: false,
+                contentType: false,
+                processData: false,
+            }).done(function (data) {
+                if (data.status == "Error") {
+                    alert(data.errorMessage);
+                }
+                location.reload();
+            });
+
+            return false;
+        });
+    </script>
+    </div>
+</div>
+
+<table class="text-center table m-2">
+  <thead>
+    <tr>
+      <th scope="col">#</th>
+      <th scope="col">Input</th>
+      <th scope="col">Total Pages</th>
+      <th scope="col">Total invalid pages</th>
+      <th scope="col">Total extarnals</th>
+      <th scope="col">Download results</th>
+    </tr>
+  </thead>
+  <tbody>
+    @foreach (var item in Model.getResults())
+    {
+        <tr>
+            <th scope="row">@item.ID</th>
+            @if (item.IsInputFile) 
+            {
+                <td><a href="/api/downloadInputFile?id=@item.ID" target="_blank" class="btn btn-info" role="button">Download file</a></td>
+            }
+            else 
+            {
+                <td><a target="_blank" href="@item.Input">@item.Input</a></td>
+            }
+            @if (item.Done)
+            {
+                <td>@item.TotalPages</td>
+                <td>@item.TotalInvalidPages</td>
+                <td>@item.TotalInvalidExternals</td>
+            }
+            else
+            {
+                <td id="totalPages_@(item.ID)">-</td>
+                <td id="totalInvalid_@(item.ID)">-</td>
+                <td id="totalExternals_@(item.ID)">-</td>
+            }
+                
+            @if (item.Done)
+            {
+                <td><a href="/api/downloadFile?id=@item.ID" target="_blank" class="btn btn-success" role="button">Download result</a></td>
+            }
+            else 
+            {
+                <td>
+                    <a href="/api/downloadFile?id=@item.ID" id="hiddenResult_@(item.ID)" target="_blank" class="btn btn-success d-none" role="button">Download result</a>
+                    <div class="spinner-border text-primary" id="spinnerResult_@(item.ID)" role="status"></div>
+                    <script>
+                        if (document.getElementById("hiddenResult_@(item.ID)").classList.contains("d-none")) {
+                                $.get("/api/checkReady?id=@(item.ID)", function(data) {
+                                    if (data.done == true) {
+                                        $("#spinnerResult_@(item.ID)")[0].classList.add("d-none");
+                                        $("#hiddenResult_@(item.ID)")[0].classList.remove("d-none");
+                                        $("#totalPages_@(item.ID)")[0].innerText = data.totalPages;
+                                        $("#totalInvalid_@(item.ID)")[0].innerText = data.totalInvalidPages;
+                                        $("#totalExternals_@(item.ID)")[0].innerText = data.totalInvalidExternals;
+                                    }
+			                    });
+                        }
+                        setInterval(function() {
+                            if (document.getElementById("hiddenResult_@(item.ID)").classList.contains("d-none")) {
+                                $.get("/api/checkReady?id=@(item.ID)", function(data) {
+                                    if (data.done == true) {
+                                        $("#spinnerResult_@(item.ID)")[0].classList.add("d-none");
+                                        $("#hiddenResult_@(item.ID)")[0].classList.remove("d-none");
+                                        $("#totalPages_@(item.ID)")[0].innerText = data.totalPages;
+                                        $("#totalInvalid_@(item.ID)")[0].innerText = data.totalInvalidPages;
+                                        $("#totalExternals_@(item.ID)")[0].innerText = data.totalInvalidExternals;
+                                    }
+			                    });
+                            }
+                        }, 5000);
+                    </script>
+                </td>
+            }
+        </tr>
+    }
+  </tbody>
+</table>
